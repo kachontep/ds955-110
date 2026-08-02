@@ -1,0 +1,184 @@
+---
+title: "Executive Business Analytics"
+author: "Quarto R Dashboard Example"
+format: 
+  dashboard:
+    theme: cosmo
+    orientation: rows
+    nav-buttons:
+      - icon: github
+        href: https://github.com
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(DT)
+library(scales)
+library(viridisLite)
+
+# Generate reproducible synthetic business data
+set.seed(42)
+dates <- seq(as.Date("2024-01-01"), as.Date("2024-12-31"), by = "day")
+regions <- c("North America", "Europe", "Asia-Pacific", "Latin America")
+categories <- c("Electronics", "Furniture", "Office Supplies", "Software")
+segments <- c("Consumer", "Corporate", "Small Business")
+
+df <- expand.grid(
+  Date = dates,
+  Region = regions,
+  Category = categories
+) %>%
+  mutate(
+    Sales = round(runif(n(), 100, 2500) + as.numeric(format(Date, "%m")) * 50, 2),
+    Quantity = sample(1:20, n(), replace = TRUE),
+    Profit = round(Sales * runif(n(), 0.1, 0.35), 2),
+    Customer_Segment = sample(segments, n(), replace = TRUE)
+  )
+
+total_revenue <- sum(df$Sales)
+total_orders <- nrow(df)
+avg_profit_margin <- mean(df$Profit / df$Sales) * 100
+total_profit <- sum(df$Profit)
+```
+
+# Overview
+
+## Row {height=25%}
+
+```{r}
+#| content: valuebox
+#| title: "Total Revenue"
+#| icon: dollar-sign
+#| color: primary
+list(
+  value = paste0("$", comma(round(total_revenue)))
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Total Profit"
+#| icon: graph-up-arrow
+#| color: success
+list(
+  value = paste0("$", comma(round(total_profit)))
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Average Profit Margin"
+#| icon: percent
+#| color: info
+list(
+  value = paste0(round(avg_profit_margin, 1), "%")
+)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Total Transactions"
+#| icon: cart-check
+#| color: warning
+list(
+  value = comma(total_orders)
+)
+```
+
+## Row {height=40%}
+
+### Column {width=60%}
+
+```{r}
+#| title: "Monthly Revenue Trend by Region"
+monthly_sales <- df %>%
+  mutate(Month = format(Date, "%Y-%m")) %>%
+  group_by(Month, Region) %>%
+  summarize(Revenue = sum(Sales), .groups = 'drop')
+
+p1 <- ggplot(monthly_sales, aes(x = Month, y = Revenue, color = Region, group = Region)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2) +
+  scale_y_continuous(labels = dollar_format()) +
+  theme_minimal(base_size = 12) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(x = "Month", y = "Revenue ($)")
+
+ggplotly(p1)
+```
+
+### Column {width=40%}
+
+```{r}
+#| title: "Revenue Share by Product Category"
+cat_sales <- df %>%
+  group_by(Category) %>%
+  summarize(Revenue = sum(Sales), .groups = 'drop')
+
+p2 <- plot_ly(cat_sales, labels = ~Category, values = ~Revenue, type = 'pie',
+              textposition = 'inside', textinfo = 'label+percent',
+              marker = list(colors = c('#2b5c8f', '#4682b4', '#6baed6', '#9ecae1'))) %>%
+  layout(showlegend = TRUE)
+
+p2
+```
+
+## Row {height=35%}
+
+### Column {width=50%}
+
+```{r}
+#| title: "Profitability by Customer Segment"
+segment_summary <- df %>%
+  group_by(Customer_Segment) %>%
+  summarize(
+    Sales = sum(Sales),
+    Profit = sum(Profit),
+    .groups = 'drop'
+  )
+
+p3 <- ggplot(segment_summary, aes(x = Customer_Segment, y = Profit, fill = Customer_Segment)) +
+  geom_col(show.legend = FALSE, width = 0.5) +
+  scale_y_continuous(labels = dollar_format()) +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal(base_size = 12) +
+  labs(x = "Customer Segment", y = "Profit ($)")
+
+ggplotly(p3)
+```
+
+### Column {width=50%}
+
+```{r}
+#| title: "Sales vs Profit Relationship"
+p4 <- ggplot(df %>% sample_n(500), aes(x = Sales, y = Profit, color = Category)) +
+  geom_point(alpha = 0.7, size = 2) +
+  geom_smooth(method = "lm", se = FALSE, color = "darkgray", linetype = "dashed") +
+  scale_x_continuous(labels = dollar_format()) +
+  scale_y_continuous(labels = dollar_format()) +
+  theme_minimal(base_size = 12) +
+  labs(x = "Sales ($)", y = "Profit ($)")
+
+ggplotly(p4)
+```
+
+# Detailed Data
+
+## Row {height=100%}
+
+```{r}
+#| title: "Interactive Business Data Explorer"
+datatable(
+  df %>% select(Date, Region, Category, Customer_Segment, Quantity, Sales, Profit) %>% head(300),
+  options = list(
+    pageLength = 10,
+    autoWidth = TRUE,
+    dom = 'Bfrtip'
+  ),
+  filter = 'top',
+  rownames = FALSE
+) %>%
+  formatCurrency(c('Sales', 'Profit'), "$")
+```

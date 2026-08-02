@@ -1,0 +1,19 @@
+# Quarto output and cache
+.quarto/
+_site/
+*_cache/
+*_files/
+
+# R specific
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# OS / Editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+
+/.quarto/
+**/*.quarto_ipynb
