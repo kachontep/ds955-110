@@ -1,19 +1,25 @@
-# Executive Business Analytics Dashboard (Quarto + R)
+# Product Sales Analytics Dashboard (Quarto + R)
 
-An example interactive business analytics dashboard built with **Quarto** and **R** (`ggplot2`, `plotly`, `DT`, `dplyr`). Designed for seamless deployment to **GitHub Pages**.
+An interactive product transactions analytics dashboard built with **Quarto** and **R** (`ggplot2`, `plotly`, `crosstalk`, `dplyr`, `readr`, `lubridate`, `scales`). Designed for seamless deployment to **GitHub Pages**.
 
 ---
 
 ## 📊 Dashboard Features
 
-- **KPI Value Boxes**: Key metrics highlighting Total Revenue, Profit, Profit Margins, and Transaction Counts.
-- **Interactive Visualizations**:
-  - Monthly Revenue Trend by Region (interactive line chart powered by `plotly`).
-  - Revenue Share by Product Category (interactive pie chart).
-  - Profitability by Customer Segment (bar chart).
-  - Sales vs. Profit Relationship (scatter plot with regression trends).
-- **Data Table**: Filterable and searchable transaction data table powered by `DT`.
-- **Multi-Tab Navigation**: Clean structure separating Overview metrics and Detailed Data.
+- **Navbar Personal Details**: Displays **Kajornthep Piyanun 6910025010** on the right side of the navbar.
+- **Interactive Crosstalk Filters**: Filter data in real time by:
+  - Product Category (`รองเท้า`, `กางเกง`, `เสื้อ`, `กระเป๋า`)
+  - Customer Region (`North`, `South`, `East`, `West`, `City`)
+  - Product Color (`Black`, `White`, `Red`)
+  - Product Size (`M`, `L`)
+  - Customer Gender (`Female`, `Male`)
+- **KPI Value Boxes**: Highlighting Total Revenue (฿917,000), Total Items Sold (999), Unique Customers (10), and Average Item Price (฿917.9).
+- **Interactive Visualizations (Plotly & ggplot2)**:
+  - **Daily Sales Revenue Trend**: Time-series plot showing revenue over time by product line.
+  - **Revenue Share by Product Category**: Interactive donut chart.
+  - **Revenue by Customer Region**: Regional sales distribution bar chart.
+  - **Revenue by Customer Age Range & Gender**: Grouped demographic sales bar chart.
+- **Streamlined Single-Page Layout**: Clean layout optimized for executive overview.
 
 ---
 
@@ -22,11 +28,11 @@ An example interactive business analytics dashboard built with **Quarto** and **
 ### Prerequisites
 - [R](https://cloud.r-project.org/) (version 4.0+)
 - [Quarto CLI](https://quarto.org/) (bundled with RStudio or standalone executable)
-- R packages: `dplyr`, `ggplot2`, `plotly`, `DT`, `scales`, `viridisLite`
+- R packages: `dplyr`, `readr`, `lubridate`, `ggplot2`, `plotly`, `DT`, `crosstalk`, `scales`, `tidyverse`
 
 To install the required R packages in R console:
 ```r
-install.packages(c("dplyr", "ggplot2", "plotly", "DT", "scales", "viridisLite"))
+install.packages(c("dplyr", "readr", "lubridate", "ggplot2", "plotly", "DT", "crosstalk", "scales", "tidyverse"))
 ```
 
 ### Preview the Dashboard
@@ -48,28 +54,20 @@ quarto render index.qmd
 
 ## 🌐 Deploying to GitHub Pages
 
-### Option 1: Automatic Deployment via GitHub Actions (Recommended)
+### Automatic Deployment via GitHub Actions
 
 This repository includes a pre-configured GitHub Actions workflow at [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
 
 1. Push your repository to GitHub:
    ```bash
    git add .
-   git commit -m "Add Quarto R dashboard"
+   git commit -m "Update Product Sales Analytics dashboard"
    git push origin main
    ```
 2. In your GitHub repository:
    - Go to **Settings** > **Pages**.
    - Under **Build and deployment** > **Source**, select **GitHub Actions**.
 3. Every commit to `main` will automatically build and publish your dashboard!
-
-### Option 2: Publish via Command Line
-
-Alternatively, you can publish directly using Quarto's CLI:
-
-```bash
-quarto publish gh-pages
-```
 
 ---
 
@@ -79,6 +77,8 @@ quarto publish gh-pages
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml    # GitHub Actions workflow for GitHub Pages
+├── dataset/
+│   └── product-transactions.csv # Transaction dataset
 ├── _quarto.yaml          # Quarto project metadata & layout configuration
 ├── index.qmd             # Main Quarto R Dashboard source document
 ├── .gitignore            # Git ignore rules for R and Quarto artifacts
