@@ -1,14 +1,7 @@
 project:
   type: website
   output-dir: _site
-
-dashboard:
-  title: "Executive Business Analytics"
-  nav-buttons:
-    - icon: github
-      href: https://github.com
-      aria-label: GitHub
-
+      
 format:
   dashboard:
     theme: cosmo

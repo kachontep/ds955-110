@@ -1,89 +1,103 @@
 ---
-title: "Executive Business Analytics"
-author: "Quarto R Dashboard Example"
+title: "Product Sales Overview"
 format: 
   dashboard:
-    theme: cosmo
-    orientation: rows
     nav-buttons:
-      - icon: github
-        href: https://github.com
+      - text: "Kajornthep Piyanun 6910025010"
+        href: "#"
 ---
 
-```{r setup, include=FALSE}
-library(dplyr)
-library(ggplot2)
+```{r}
+#| label: setup
+#| include: false
+library(tidyverse)
+library(lubridate)
 library(plotly)
-library(DT)
+library(crosstalk)
 library(scales)
-library(viridisLite)
 
-# Generate reproducible synthetic business data
-set.seed(42)
-dates <- seq(as.Date("2024-01-01"), as.Date("2024-12-31"), by = "day")
-regions <- c("North America", "Europe", "Asia-Pacific", "Latin America")
-categories <- c("Electronics", "Furniture", "Office Supplies", "Software")
-segments <- c("Consumer", "Corporate", "Small Business")
+# Read dataset
+raw_df <- read_csv("dataset/product-transactions.csv", show_col_types = FALSE)
 
-df <- expand.grid(
-  Date = dates,
-  Region = regions,
-  Category = categories
-) %>%
+df <- raw_df %>%
   mutate(
-    Sales = round(runif(n(), 100, 2500) + as.numeric(format(Date, "%m")) * 50, 2),
-    Quantity = sample(1:20, n(), replace = TRUE),
-    Profit = round(Sales * runif(n(), 0.1, 0.35), 2),
-    Customer_Segment = sample(segments, n(), replace = TRUE)
+    Date_clean = ymd(Date),
+    total_Price_num = as.numeric(gsub(",", "", total_Price)),
+    Product = factor(Product),
+    Region = factor(`Customer Address`),
+    Gender = factor(`Customer Gender`),
+    Color = factor(`Product Colors`),
+    Size = factor(`Product Size`),
+    `Age Range` = factor(`Customer Age Range`)
   )
 
-total_revenue <- sum(df$Sales)
-total_orders <- nrow(df)
-avg_profit_margin <- mean(df$Profit / df$Sales) * 100
-total_profit <- sum(df$Profit)
+# Calculate global KPI metrics
+total_revenue <- sum(df$total_Price_num, na.rm = TRUE)
+total_items <- nrow(df)
+unique_customers <- n_distinct(df$`Customer ID`)
+avg_item_price <- mean(df$total_Price_num, na.rm = TRUE)
+
+# Prepare SharedData for Crosstalk interactivity
+sd <- SharedData$new(df)
 ```
 
-# Overview
+# Sidebar {.sidebar}
 
-## Row {height=25%}
+### Filters
+
+```{r}
+filter_select("prod", "Product Category", sd, ~Product)
+filter_select("region", "Customer Region", sd, ~Region)
+filter_select("color", "Product Color", sd, ~Color)
+filter_select("size", "Product Size", sd, ~Size)
+filter_checkbox("gender", "Customer Gender", sd, ~Gender)
+```
+
+---
+
+*Select filters above to update charts in real time.*
+
+# Dashboard
+
+## Row {height=20%}
 
 ```{r}
 #| content: valuebox
 #| title: "Total Revenue"
-#| icon: dollar-sign
+#| icon: currency-dollar
 #| color: primary
 list(
-  value = paste0("$", comma(round(total_revenue)))
+  value = paste0("฿", comma(total_revenue))
 )
 ```
 
 ```{r}
 #| content: valuebox
-#| title: "Total Profit"
-#| icon: graph-up-arrow
+#| title: "Total Items Sold"
+#| icon: bag-check
 #| color: success
 list(
-  value = paste0("$", comma(round(total_profit)))
+  value = comma(total_items)
 )
 ```
 
 ```{r}
 #| content: valuebox
-#| title: "Average Profit Margin"
-#| icon: percent
+#| title: "Unique Customers"
+#| icon: people
 #| color: info
 list(
-  value = paste0(round(avg_profit_margin, 1), "%")
+  value = comma(unique_customers)
 )
 ```
 
 ```{r}
 #| content: valuebox
-#| title: "Total Transactions"
-#| icon: cart-check
+#| title: "Avg Item Price"
+#| icon: tag
 #| color: warning
 list(
-  value = comma(total_orders)
+  value = paste0("฿", comma(round(avg_item_price, 1)))
 )
 ```
 
@@ -92,93 +106,101 @@ list(
 ### Column {width=60%}
 
 ```{r}
-#| title: "Monthly Revenue Trend by Region"
-monthly_sales <- df %>%
-  mutate(Month = format(Date, "%Y-%m")) %>%
-  group_by(Month, Region) %>%
-  summarize(Revenue = sum(Sales), .groups = 'drop')
+#| title: "Daily Sales Revenue Trend"
+p_trend <- plot_ly(
+  sd,
+  x = ~Date_clean,
+  y = ~total_Price_num,
+  color = ~Product,
+  colors = c("#2b5c8f", "#e6550d", "#31a354", "#756bb1"),
+  type = 'scatter',
+  mode = 'markers+lines',
+  hoverinfo = 'text',
+  text = ~paste0(
+    "<b>Date:</b> ", Date,
+    "<br><b>Product:</b> ", Product,
+    "<br><b>Price:</b> ฿", comma(total_Price_num),
+    "<br><b>Customer:</b> ", `Customer Name`, " (", Region, ")"
+  )
+) %>%
+  layout(
+    xaxis = list(title = "Date"),
+    yaxis = list(title = "Total Price (THB)"),
+    legend = list(orientation = "h", x = 0, y = 1.12),
+    hovermode = "closest"
+  )
 
-p1 <- ggplot(monthly_sales, aes(x = Month, y = Revenue, color = Region, group = Region)) +
-  geom_line(linewidth = 1) +
-  geom_point(size = 2) +
-  scale_y_continuous(labels = dollar_format()) +
-  theme_minimal(base_size = 12) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  labs(x = "Month", y = "Revenue ($)")
-
-ggplotly(p1)
+p_trend
 ```
 
 ### Column {width=40%}
 
 ```{r}
 #| title: "Revenue Share by Product Category"
-cat_sales <- df %>%
-  group_by(Category) %>%
-  summarize(Revenue = sum(Sales), .groups = 'drop')
-
-p2 <- plot_ly(cat_sales, labels = ~Category, values = ~Revenue, type = 'pie',
-              textposition = 'inside', textinfo = 'label+percent',
-              marker = list(colors = c('#2b5c8f', '#4682b4', '#6baed6', '#9ecae1'))) %>%
-  layout(showlegend = TRUE)
-
-p2
-```
-
-## Row {height=35%}
-
-### Column {width=50%}
-
-```{r}
-#| title: "Profitability by Customer Segment"
-segment_summary <- df %>%
-  group_by(Customer_Segment) %>%
-  summarize(
-    Sales = sum(Sales),
-    Profit = sum(Profit),
-    .groups = 'drop'
+p_pie <- plot_ly(
+  sd,
+  labels = ~Product,
+  values = ~total_Price_num,
+  type = 'pie',
+  hole = 0.4,
+  marker = list(colors = c("#2b5c8f", "#e6550d", "#31a354", "#756bb1")),
+  textposition = 'inside',
+  textinfo = 'label+percent',
+  hoverinfo = 'label+value+percent'
+) %>%
+  layout(
+    showlegend = TRUE,
+    legend = list(orientation = "h", x = 0, y = -0.15)
   )
 
-p3 <- ggplot(segment_summary, aes(x = Customer_Segment, y = Profit, fill = Customer_Segment)) +
-  geom_col(show.legend = FALSE, width = 0.5) +
-  scale_y_continuous(labels = dollar_format()) +
-  scale_fill_brewer(palette = "Set2") +
-  theme_minimal(base_size = 12) +
-  labs(x = "Customer Segment", y = "Profit ($)")
+p_pie
+```
 
-ggplotly(p3)
+## Row {height=40%}
+
+### Column {width=50%}
+
+```{r}
+#| title: "Revenue by Customer Region"
+p_region <- plot_ly(
+  sd,
+  x = ~Region,
+  y = ~total_Price_num,
+  color = ~Region,
+  colors = "Set2",
+  type = 'bar',
+  hoverinfo = 'text',
+  text = ~paste0("<b>Region:</b> ", Region, "<br><b>Revenue:</b> ฿", comma(total_Price_num))
+) %>%
+  layout(
+    xaxis = list(title = "Region"),
+    yaxis = list(title = "Revenue (THB)"),
+    showlegend = FALSE
+  )
+
+p_region
 ```
 
 ### Column {width=50%}
 
 ```{r}
-#| title: "Sales vs Profit Relationship"
-p4 <- ggplot(df %>% sample_n(500), aes(x = Sales, y = Profit, color = Category)) +
-  geom_point(alpha = 0.7, size = 2) +
-  geom_smooth(method = "lm", se = FALSE, color = "darkgray", linetype = "dashed") +
-  scale_x_continuous(labels = dollar_format()) +
-  scale_y_continuous(labels = dollar_format()) +
-  theme_minimal(base_size = 12) +
-  labs(x = "Sales ($)", y = "Profit ($)")
-
-ggplotly(p4)
-```
-
-# Detailed Data
-
-## Row {height=100%}
-
-```{r}
-#| title: "Interactive Business Data Explorer"
-datatable(
-  df %>% select(Date, Region, Category, Customer_Segment, Quantity, Sales, Profit) %>% head(300),
-  options = list(
-    pageLength = 10,
-    autoWidth = TRUE,
-    dom = 'Bfrtip'
-  ),
-  filter = 'top',
-  rownames = FALSE
+#| title: "Revenue by Customer Age Range & Gender"
+p_age <- plot_ly(
+  sd,
+  x = ~`Age Range`,
+  y = ~total_Price_num,
+  color = ~Gender,
+  colors = c("#41b6c4", "#253494"),
+  type = 'bar',
+  hoverinfo = 'text',
+  text = ~paste0("<b>Age Range:</b> ", `Age Range`, "<br><b>Gender:</b> ", Gender, "<br><b>Revenue:</b> ฿", comma(total_Price_num))
 ) %>%
-  formatCurrency(c('Sales', 'Profit'), "$")
+  layout(
+    barmode = 'group',
+    xaxis = list(title = "Age Range"),
+    yaxis = list(title = "Revenue (THB)"),
+    legend = list(title = list(text = 'Gender'))
+  )
+
+p_age
 ```
