@@ -30,10 +30,14 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           packages: |
+            any::tidyverse
+            any::readr
             any::dplyr
+            any::lubridate
             any::ggplot2
             any::plotly
             any::DT
+            any::crosstalk
             any::scales
             any::viridisLite
 
